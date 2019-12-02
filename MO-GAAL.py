@@ -9,6 +9,8 @@ import keras
 import math
 import argparse
 
+from scipy.io import loadmat
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Run MO-GAAL.")
     parser.add_argument('--path', nargs='?', default='Data/Annthyroid',
@@ -46,6 +48,7 @@ def create_discriminator():
     return Model(data, fake)
 
 # Load data
+'''
 def load_data():
     data = pd.read_table('{path}'.format(path = args.path), sep=',', header=None)
     data = data.sample(frac=1).reset_index(drop=True)
@@ -55,6 +58,22 @@ def load_data():
     data_id = id.values
     data_y = y.values
     return data_x, data_y, data_id
+'''
+def load_data():
+    slice_len = 500
+    data = loadmat('/home/anjie/data/97.mat')['X097_DE_time']
+    l = int(data.shape[0]/slice_len)*slice_len
+    data_x = np.array(data[:l]).reshape(-1, slice_len) 
+    data_y = np.array(['nor' for i in range(data_x.shape[0])])
+
+    x = loadmat('/home/anjie/data/105.mat')['X105_DE_time']
+    l = int(x.shape[0]/slice_len)*slice_len
+    x = np.array(x[:l]).reshape(-1, slice_len)
+    y = np.array(['out' for i in range(x.shape[0])])
+
+    data_x = np.concatenate((data_x, x), axis = 0)
+    data_y = np.concatenate((data_y, y), axis = 0)
+    return data_x, data_y
 
 # Plot loss history
 def plot(train_history, name):
@@ -79,7 +98,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     # initialize dataset
-    data_x, data_y, data_id = load_data()
+    data_x, data_y = load_data()
     data_size = data_x.shape[0]
     latent_size = data_x.shape[1]
     print("The dimension of the training data :{}*{}".format(data_size, latent_size))
@@ -196,5 +215,7 @@ if __name__ == '__main__':
             print('AUC:{}'.format(AUC))
             for i in range(num_batches):
                 train_history['auc'].append(AUC)
+
+        discriminator.save('trained_discriminator.h5')
 
     plot(train_history, 'loss')
